@@ -6,6 +6,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import Form from "../ui/invoices/create-form";
 
+import { signIn } from "@/auth";
+import { AuthError } from "next-auth";
+
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
 
 const FormSchema = z.object({
@@ -114,4 +117,25 @@ export async function updateInvoice(
 export async function deleteInvoice(id: string) {
   await sql`DELETE FROM invoices WHERE id = ${id}`;
   revalidatePath("/dashboard/invoices");
+}
+
+// Authenticate User Action
+
+export async function authenticate(
+  prevState: string | undefined,
+  formData: FormData
+) {
+  try {
+    await signIn("credentials", formData);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return "Invalid credentials";
+        default:
+          return "Something went wrong.";
+      }
+    }
+    throw error;
+  }
 }
